@@ -24,31 +24,22 @@ command_exchange = event_exchange
 wait_exchange = ch.direct('POC_wait')
 
 #create our queue
-q = ch.queue '', :exclusive => true
+q = ch.queue 'work', :exclusive => true,  :arguments => {"x-dead-letter-exchange" => wait_exchange.name, "x-dead-letter-routing-key"=> LISTEN_ROUTING_KEY}
 q.bind event_exchange, routing_key: LISTEN_ROUTING_KEY
 
 #create the wait queue
-wq = ch.queue 'wait', :exclusive => true, :arguments => {"x-dead-letter-exchange" => event_exchange.name}
+wq = ch.queue 'wait', :exclusive => true, :arguments => {"x-dead-letter-exchange" => event_exchange.name, "x-message-ttl" => 1000}
 wq.bind wait_exchange, routing_key: LISTEN_ROUTING_KEY
 
 begin
   q.subscribe block: true, manual_ack: true  do |delivery_info, properties, body|
-    puts "received: #{delivery_info.routing_key} body: #{body}"
     headers = properties.headers || {}
     dead_headers = headers.fetch("x-death", []).last || {}
 
-    retry_count = headers.fetch("x-retry-count", 0)
-    expiration = dead_headers.fetch("original-expiration", 1000).to_i
+    count = dead_headers.fetch("count", 0).to_i
+    puts "received: #{delivery_info.routing_key} body: #{body}, count: #{count}"
 
-    #uncomment this line and comment the next batch for RPC
-    # command_exchange.publish body, routing_key: generate_command_routing_key(delivery_info.routing_key)
-
-    #comment these lines and uncomment the previous chunk for RPC.
-    new_expiration = expiration * 1.5
-    puts "publishing body: #{body} to wait queue with expiration #{new_expiration} and retry count #{retry_count + 1}"
-    wait_exchange.publish body, routing_key: LISTEN_ROUTING_KEY, expiration: new_expiration.to_i, headers: { "x-retry-count": retry_count + 1 }
-
-    ch.ack delivery_info.delivery_tag, false
+    ch.basic_reject delivery_info.delivery_tag, false
   end
 rescue Interrupt => _
   ch.close
