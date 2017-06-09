@@ -1,5 +1,5 @@
 PATH
-  remote: ../../bunny_burrow
+  remote: ../bunny_burrow
   specs:
     bunny_burrow (2.0.0)
       bunny (~> 2.3)
@@ -35,4 +35,4 @@ DEPENDENCIES
   rest-client
 
 BUNDLED WITH
-   1.14.4
+   1.14.6

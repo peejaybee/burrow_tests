@@ -7,8 +7,10 @@ client =  BunnyBurrow::Client.new do |client|
   client.logger = Logger.new(STDOUT)
 end
 
-result = client.publish 'booga', TEST_ROUTING_KEY
+1.times do |n|
+  payload = "#{n}:#{ARGV[0]}"
+  puts payload
+  result = client.publish payload, TEST_ROUTING_KEY
 
-puts result
-
-sleep(20000)
+  puts result
+end
